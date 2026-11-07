@@ -44,13 +44,32 @@
 | R-6 假绿 | CI 内必须执行 verify-apk.sh，且输出报告 | 缺校验步骤即阻断 |
 | R-7 字体缩放 | 自查清单含 1.3× 缩放检查（截图/手动） | 主人 E2E 项，交付时明确列出 |
 
-## 3. 证据登记（实现阶段回填）
+## 3. 证据登记（实现阶段已回填）
 
 | 证据 ID | 内容 | 位置 | 状态 |
 |---|---|---|---|
-| E-CMD-001 | 工具链隔离报告 | `dist/toolchain-report.txt` | 待生成 |
-| E-CMD-002 | APK 校验报告 | `dist/apk-report.json` | 待生成 |
-| E-CMD-003 | 单测与冒烟输出 | `dist/test-report.txt` | 待生成 |
-| E-CI-001 | main 分支 CI run | GitHub Actions URL | 待生成 |
-| E-REL-001 | v1.0.0 Release | GitHub Release URL | 待生成 |
-| E-FILE-001 | APK SHA256 | `SHA256SUMS.txt` | 待生成 |
+| E-CMD-001 | 工具链隔离报告：JDK 21.0.13 + `platforms;android-36` + `build-tools;36.0.0`；`~/.gradle`、`~/.android` 均不存在 | `dist/toolchain-report.txt` | ✅ 已产出 |
+| E-CMD-002 | 单元/结构测试 12/12 通过 | `npm test` 输出 | ✅ 已通过 |
+| E-CMD-003 | 浏览器冒烟 6/6 通过（移动 390×844 + 桌面 1280×900） | `npx playwright test` 输出 | ✅ 已通过 |
+| E-CMD-004 | 发布产物 22/22 项校验通过（从 Release 重新下载后复核） | `dist/apk-report.json` | ✅ 已通过 |
+| E-CI-001 | main 分支 CI 全绿（web + android） | https://github.com/hhx465453939/qimen/actions/runs/42331165527 | ✅ success |
+| E-CI-002 | v1.0.0 tag CI 全绿（含 release job） | https://github.com/hhx465453939/qimen/actions/runs/42331795798 | ✅ success |
+| E-REL-001 | GitHub Release v1.0.0 | https://github.com/hhx465453939/qimen/releases/tag/v1.0.0 | ✅ 已发布 |
+| E-FILE-001 | `qimen-v1.0.0.apk`：3,458,362 字节；SHA256 `047168aa99092e00513d21990fe6266a52704730d8ab3bff7bc5b4f0b6772d01` | Release 资产 + `SHA256SUMS.txt` | ✅ 已校验 |
+| E-FILE-002 | 签名证书 SHA-256 `00d5e0497baf16d7b998123ad5e0494351ac872f4ff1c0cc1937c93792386cae`（v2 签名方案） | `apksigner verify --print-certs` | ✅ 与本地构建同源 |
+
+### 3.1 关于「本地构建 vs CI 构建」字节不一致的说明
+
+本地构建的 SHA256 为 `eb484e55…`，CI 产物为 `047168aa…`。
+**这是预期行为**：APK 内含构建时间戳等非确定性元数据，且由不同机器、不同 Gradle 缓存状态构建。
+两者**签名证书完全相同**（同一 keystore），可互相覆盖安装；`versionName`/`versionCode`/`minSdk`/`targetSdk` 完全一致，已逐项校验。
+若需字节级可复现，需额外开启 reproducible build 并对齐 zip 时间戳，不在本 CHG 范围内。
+
+### 3.2 未完成/未验证项（如实登记）
+
+| 项 | 原因 | 责任方 |
+|---|---|---|
+| 真机安装与运行 | 本机无 `/dev/kvm`，无法运行模拟器；Playwright 只能验证浏览器渲染 | 主人设备端 E2E（清单见 `docs/ANDROID.md` §7） |
+| Android 15/16 的 edge-to-edge 视觉 | 首版 targetSdk 34 已规避强制贴边 | 若后续升 35/36 需另行验证 |
+| 旧机 WebView（< Chrome 108） | minSdk 24 机型 WebView 可升级，但未实机覆盖 | 建议随 E2E 顺带确认 |
+| 重复 tag 的幂等行为 | 采用 `gh release create --verify-tag`，已存在 Release 时会明确报错而非静默覆盖 | 设计行为，已记录 |

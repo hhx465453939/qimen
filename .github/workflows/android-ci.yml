@@ -36,6 +36,12 @@ jobs:
       - name: 结构与分页行为测试
         run: npm test
 
+      - name: 安装 Playwright 浏览器
+        run: npx playwright install --with-deps chromium
+
+      - name: 浏览器冒烟（移动/小屏/平板/桌面）
+        run: npm run test:e2e
+
       - name: 构建 web 资源
         run: npm run build:web
 
