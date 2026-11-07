@@ -41,6 +41,8 @@ async function walk(dir, acc = []) {
 async function main() {
   await rm(OUT, { recursive: true, force: true });
   await mkdir(OUT, { recursive: true });
+  // 全新 checkout（尤其 CI）没有 dist/，必须先创建再写报告
+  await mkdir(path.join(ROOT, 'dist'), { recursive: true });
 
   for (const item of INCLUDE) {
     await copyTree(path.join(ROOT, item), path.join(OUT, item));
