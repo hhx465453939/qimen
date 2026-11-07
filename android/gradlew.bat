@@ -38,6 +38,12 @@ for %%i in ("%APP_HOME%") do set APP_HOME=%%~fi
 @rem Add default JVM options here. You can also use JAVA_OPTS and GRADLE_OPTS to pass JVM options to this script.
 set DEFAULT_JVM_OPTS="-Xmx64m" "-Xms64m"
 
+@rem --- CHG-001：把 AGP/SDK 的用户级状态锁在项目内（AC-3.2 零全局写入）---
+@rem AGP 的 analytics.settings 不认 ANDROID_USER_HOME，只认 JVM 的 user.home。
+if defined ANDROID_USER_HOME (set QIMEN_USER_HOME=%ANDROID_USER_HOME%) else (set QIMEN_USER_HOME=%APP_HOME%\..\.toolchain\android-user-home)
+if not exist "%QIMEN_USER_HOME%" mkdir "%QIMEN_USER_HOME%" >NUL 2>&1
+set DEFAULT_JVM_OPTS=%DEFAULT_JVM_OPTS% "-Duser.home=%QIMEN_USER_HOME%"
+
 @rem Find java.exe
 if defined JAVA_HOME goto findJavaFromJavaHome
 
