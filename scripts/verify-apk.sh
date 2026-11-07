@@ -27,6 +27,10 @@ APKSIGNER="$BT/apksigner"
 
 eval "$(node scripts/version.mjs --shell)"
 
+# 防御：未导出 ANDROID_HOME 时回落到项目内 SDK（避免 set -u 直接中断）
+: "${ANDROID_HOME:=$QIMEN_TOOLCHAIN/android-sdk}"
+export ANDROID_HOME
+
 OK=0
 BAD=0
 pass() { echo "[verify][OK]   $1"; OK=$((OK + 1)); }

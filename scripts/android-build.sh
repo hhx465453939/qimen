@@ -16,6 +16,10 @@ case "$TARGET" in
   *) echo "用法: $0 [debug|release]"; exit 2 ;;
 esac
 
+# 防御：若 env.sh 未导出（例如外部已有 SDK 但变量拼写不一），给出明确错误而不是 unbound
+: "${ANDROID_HOME:=$QIMEN_TOOLCHAIN/android-sdk}"
+export ANDROID_HOME
+
 command -v java >/dev/null || { echo "[build][FAIL] 未找到 java，请先 npm run setup"; exit 1; }
 [ -d "$ANDROID_HOME/platforms/android-36" ] || { echo "[build][FAIL] 缺少 platforms;android-36，请先 npm run setup"; exit 1; }
 

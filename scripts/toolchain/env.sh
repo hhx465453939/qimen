@@ -13,7 +13,8 @@ else
 fi
 QIMEN_ROOT="$(cd "$(dirname "$_qimen_env_src")/../.." && pwd)"
 export QIMEN_ROOT
-export QIMEN_TOOLCHAIN="$QIMEN_TOOLCHAIN:-$QIMEN_ROOT/.toolchain"
+# 注意：调用方可能开着 set -u，必须用 ${VAR:-} 形式读取未定义变量
+export QIMEN_TOOLCHAIN="${QIMEN_TOOLCHAIN:-$QIMEN_ROOT/.toolchain}"
 
 # ---------- JDK ----------
 if [ -x "$QIMEN_TOOLCHAIN/jdk21/bin/java" ]; then

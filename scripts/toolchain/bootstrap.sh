@@ -11,6 +11,13 @@ qimen_write_gradle_proxy
 
 DL="$QIMEN_TOOLCHAIN/downloads"
 mkdir -p "$DL" "$QIMEN_ROOT/dist"
+
+# 全新机器上 SDK 目录还不存在，env.sh 不会导出 ANDROID_HOME；
+# bootstrap 必须自己确定目标路径（否则 set -u 下直接报未定义）
+: "${ANDROID_HOME:=$QIMEN_TOOLCHAIN/android-sdk}"
+export ANDROID_HOME
+export ANDROID_SDK_ROOT="${ANDROID_SDK_ROOT:-$ANDROID_HOME}"
+mkdir -p "$ANDROID_HOME"
 REPORT="$QIMEN_ROOT/dist/toolchain-report.txt"
 : > "$REPORT"
 
