@@ -407,12 +407,14 @@ qimen/
 | D-7 | Playwright 本地服务探测超时 | 本机全局 `http_proxy` 把 `127.0.0.1` 也代理了（实测 503） | `env.sh` 固化 `no_proxy=localhost,127.0.0.1,::1` |
 | D-8 | 网页版会拿到旧缓存（缺 pager.css / mobile-pager.js） | `sw.js` 采用 Cache-First 且缓存版本未提升 | `CACHE_NAME` 升至 `qimen-m3-v97`，缓存清单补入两个新资源 |
 | D-9 | 启动图标与状态栏需与 M3 主色一致 | 模板默认 `ic_launcher_background=#FFFFFF`，状态栏未配置 | 背景改 `#2355C4`；`styles.xml` 设 statusBar/navigationBar 颜色与 splash 主题 |
+| D-10 | `~/.android` 残留 1 个 127 字节 `analytics.settings` | 二分定位：`gradlew help`（仅配置阶段）即产生；`ANDROID_USER_HOME` 能把 `debug.keystore`/`cache`/`android-cli` 全部导向项目内，但该写入者不认 `user.home`、不认 `HOME`、也不认 `ANDROID_USER_HOME`。已排除：启动器 `-Duser.home`、`JAVA_OPTS`、`org.gradle.jvmargs`（含写进 `GRADLE_USER_HOME/gradle.properties`）、`HOME` 覆盖、`ANDROID_PREFS_ROOT`（与 `ANDROID_USER_HOME` 冲突导致构建失败）。本机无 `strace` 且无 root，安装追踪工具本身会违反「不外溢」，无法再定位具体进程 | 新增 `scripts/toolchain/global-leak-guard.sh`：构建结束时把「纯副产物」的 `~/.android` 收容进 `.toolchain/quarantine/`。安全边界：发现 `avd/`、`adbkey`、`adbkey.pub`、`breakpad/` 或白名单外文件、或体积 > 4MB → **只告警不动手**。已接入 `android-build.sh`（成功/失败都收容）与 CI |
+| D-11 | CI 的 `setup-android` 默认装已下架的 `tools` 包 | Google 已从仓库移除 `tools`，导致 `Failed to find package 'tools'` | 改为 `packages: 'platform-tools'`，其余组件由下一步显式 `sdkmanager --install` |
 
 ### 9.1 实测结论（本轮证据）
 
 | 项 | 结果 |
 |---|---|
-| 工具链隔离 | `~/.gradle`、`~/.android` 均不存在；JDK 21 / Android SDK 均在 `.toolchain/`（JDK 346M、SDK 488M） |
+| 工具链隔离 | `~/.gradle` 不存在；`~/.android` 在构建结束时不存在（AGP 会在配置阶段写 1 个 127B 统计文件，由 `global-leak-guard.sh` 自动收容到项目内隔离区，见 D-10）；JDK 21 / Android SDK 均在 `.toolchain/`（JDK 346M、SDK 488M） |
 | 单元/结构测试 | 12/12 通过 |
 | 浏览器冒烟 | 6/6 通过（移动 390×844、桌面 1280×900） |
 | APK 产物校验 | 22/22 通过；3 MB；包名/版本/minSdk 24/targetSdk 34/label 均符合 |

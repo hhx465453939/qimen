@@ -79,6 +79,8 @@ CI 行为（`.github/workflows/android-ci.yml`）：
 | `npx playwright install chromium` 失败 | 本机 Ubuntu 20.04 不受新版本支持 | 本机用 `QIMEN_CHROMIUM_PATH=<已有 chrome 路径>`；CI 不受影响 |
 | 校验报「缺少 res/mipmap-*/ic_launcher.png」 | AGP release 会压缩 `res/` 路径 | 校验脚本已改为检查 badging 引用的图标真实存在 |
 | APK 装不上（INSTALL_FAILED_UPDATE_INCOMPATIBLE） | 签名与已装版本不同 | 卸载旧包再装（数据会丢），或确保用同一 keystore |
+| 构建后 `~/.android` 又出现了 | AGP 在配置阶段向系统账号主目录写 1 个 127B 统计文件（不认各种重定向） | 构建脚本会自动收容；也可手动跑 `bash scripts/toolchain/global-leak-guard.sh` |
+| `global-leak-guard.sh` 报「跳过处理」 | 目录里有 AVD/adb 密钥等用户数据，或白名单外文件 | 这是**保护**而非失败：先人工确认 `~/.android` 里是什么，再决定 |
 
 ## 6. 已知限制
 
@@ -87,6 +89,9 @@ CI 行为（`.github/workflows/android-ci.yml`）：
 3. **targetSdk 34**：刻意不使用 35/36，避免 Android 15+ 强制 edge-to-edge 的视觉风险；升级需单独评估。
 4. **仅侧载**：未上架任何应用商店，需要在手机上允许「安装未知来源应用」。
 5. **minSdk 24**：Android 7.0 以下不支持；建议系统 WebView 为 Chrome 108+。
+6. **AGP 统计文件的收容**：每次构建 AGP 都会向系统账号主目录写 1 个 127 字节的 `analytics.settings`，已确认无法用环境变量/ JVM 参数关闭。
+   构建脚本在结束时自动把它移入 `.toolchain/quarantine/`，因此**构建完成后的最终状态**是干净的；
+   若目录里发现 AVD、adb 密钥等用户数据，脚本只告警、绝不动手。
 
 ## 7. 主人设备端 E2E 清单
 

@@ -61,10 +61,15 @@ fi
 mkdir -p "$ROOT/dist"
 LOG="$ROOT/dist/build-$TARGET.log"
 ( cd "$ROOT/android" && ./gradlew --no-daemon --stacktrace "$GRADLE_TASK" ) >"$LOG" 2>&1 || {
+  # 失败也要收容：AGP 可能在配置阶段就写了全局副产物
+  bash "$ROOT/scripts/toolchain/global-leak-guard.sh" || true
   echo "[build][FAIL] Gradle 失败，最后 60 行："
   tail -60 "$LOG"
   exit 1
 }
+
+# 构建结束把 AGP 写入系统主目录的 127B analytics 副产物收容回项目内（AC-3.2）
+bash "$ROOT/scripts/toolchain/global-leak-guard.sh" || true
 
 # 6) 收集产物
 APK_SRC="$(find "$ROOT/android/app/build/outputs/apk/$TARGET" -name '*.apk' -type f | head -1)"
