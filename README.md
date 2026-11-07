@@ -4,6 +4,10 @@
 
 🌐 **在线体验 (GitHub Pages)**: [https://watersfree.github.io/qimen/](https://watersfree.github.io/qimen/)
 
+📦 **安卓安装包**: 到 [Releases](https://github.com/hhx465453939/qimen/releases) 下载 `qimen-v*.apk` 侧载安装
+
+> 安卓版为纯离线应用（不申请网络权限），与网页版数据不互通；构建与发版见 [docs/ANDROID.md](docs/ANDROID.md)。
+
 ---
 
 ## ✨ 核心特性
@@ -37,7 +41,15 @@
 
 ---
 
-## 📱 手机离线安装指南 (PWA)
+## 📱 手机离线安装指南
+
+### 方式一：安卓 APK（推荐，真·独立应用）
+
+1. 打开 [Releases](https://github.com/hhx465453939/qimen/releases) 下载最新的 `qimen-v*.apk`。
+2. 手机上允许「安装未知来源应用」。
+3. 安装后桌面出现「奇门排盘」，断网可用。
+
+### 方式二：PWA（网页版添加到主屏）
 
 1. 用手机浏览器打开 [https://watersfree.github.io/qimen/](https://watersfree.github.io/qimen/)。
 2. **iOS Safari**：点击底部分享按钮，选择 **“添加到主屏幕”**。
@@ -52,12 +64,23 @@
 
 ```bash
 # 克隆仓库
-git clone https://github.com/watersfree/qimen.git
+git clone https://github.com/hhx465453939/qimen.git
 cd qimen
 
 # 使用任意本地静态服务器启动，例如 Python:
 python -m http.server 8099
 ```
+
+### 安卓版构建（工具链全部在项目内）
+
+```bash
+npm install          # Capacitor CLI + 测试依赖
+npm run setup        # 下载 JDK 21 + Android SDK 到 .toolchain/（不写全局）
+npm test             # 结构与分页测试
+npm run android:release && npm run verify:apk
+```
+
+详见 [docs/ANDROID.md](docs/ANDROID.md)。
 
 ---
 
