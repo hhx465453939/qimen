@@ -1,0 +1,40 @@
+// Top-level build file where you can add configuration options common to all sub-projects/modules.
+
+// 本机走阿里云镜像加速；CI 设 QIMEN_USE_ALIYUN_MIRRORS=false 使用官方源（CHG-001 / ADR-008）
+// 用环境变量而不是 Gradle 属性：buildscript 闭包里无法解析脚本内 def 变量
+buildscript {
+    
+    repositories {
+        if (System.getenv('QIMEN_USE_ALIYUN_MIRRORS') != 'false') {
+            maven { url 'https://maven.aliyun.com/repository/google' }
+            maven { url 'https://maven.aliyun.com/repository/public' }
+            maven { url 'https://maven.aliyun.com/repository/gradle-plugin' }
+        }
+        google()
+        mavenCentral()
+    }
+    dependencies {
+        classpath 'com.android.tools.build:gradle:8.13.0'
+        classpath 'com.google.gms:google-services:4.4.4'
+
+        // NOTE: Do not place your application dependencies here; they belong
+        // in the individual module build.gradle files
+    }
+}
+
+apply from: "variables.gradle"
+
+allprojects {
+    repositories {
+        if (System.getenv('QIMEN_USE_ALIYUN_MIRRORS') != 'false') {
+            maven { url 'https://maven.aliyun.com/repository/google' }
+            maven { url 'https://maven.aliyun.com/repository/public' }
+        }
+        google()
+        mavenCentral()
+    }
+}
+
+task clean(type: Delete) {
+    delete rootProject.buildDir
+}

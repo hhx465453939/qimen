@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">奇门排盘</string>
+    <string name="title_activity_main">奇门排盘</string>
+    <string name="package_name">io.github.hhx465453939.qimen</string>
+    <string name="custom_url_scheme">io.github.hhx465453939.qimen</string>
+</resources>

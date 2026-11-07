@@ -107,6 +107,10 @@ document.addEventListener('DOMContentLoaded', () => {
   initShiganSwitchDelegation();
   initSettingsModal();
 
+  // 原生/网页环境标记 + 移动端分页初始化（CHG-001）
+  document.documentElement.classList.add(isNativeShell() ? 'native-shell' : 'web-shell');
+  initMobilePager();
+
   // 首次运行排盘
   executePaipan();
   window.__qimen_state = state;
@@ -147,8 +151,44 @@ function initShiganSwitchDelegation() {
   });
 }
 
+// 0. 运行环境判定 + 移动端分页（CHG-001）
+function isNativeShell() {
+  return !!(window.Capacitor && typeof window.Capacitor.isNativePlatform === 'function'
+    && window.Capacitor.isNativePlatform());
+}
+
+function initMobilePager() {
+  if (!window.QimenPager) {
+    console.warn('[pager] mobile-pager.js 未加载，保留原有移动端 tab 行为');
+    return;
+  }
+
+  window.QimenPager.init({
+    isModalOpen: () => !!document.querySelector('.m3-dialog-scrim.open')
+  });
+
+  // 安卓返回键优先级：关弹窗 → 回排盘页 → 交系统退出
+  const capApp = window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.App;
+  if (capApp && typeof capApp.addListener === 'function') {
+    capApp.addListener('backButton', () => {
+      const openScrim = document.querySelector('.m3-dialog-scrim.open');
+      if (openScrim) {
+        openScrim.classList.remove('open');
+        return;
+      }
+      if (window.QimenPager.handleBack() === 'handled') return;
+      if (typeof capApp.exitApp === 'function') capApp.exitApp();
+    });
+  }
+}
+
 // 1. Service Worker 注册 (PWA 离线支持与自动热更新)
 function initServiceWorker() {
+  // 原生壳内不注册 SW：资源已打进 APK，SW 只会缓存陈旧版本
+  if (isNativeShell()) {
+    console.log('[PWA] 原生环境，跳过 Service Worker 注册');
+    return;
+  }
   if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost' || location.hostname === '127.0.0.1')) {
     navigator.serviceWorker.register('./sw.js')
       .then(reg => {
@@ -984,6 +1024,13 @@ function initControls() {
 
 // 移动端底部标签页切换
 function switchMobileTab(tab) {
+  // 移动端交由分页引擎接管（CHG-001 / ADR-004）
+  if (window.QimenPager && window.QimenPager.isMobile()) {
+    window.QimenPager.go(tab);
+    return;
+  }
+
+  // 桌面兜底：保留原有显隐逻辑
   document.querySelectorAll('#m3MobileNav .nav-item').forEach(i => {
     i.classList.toggle('active', i.dataset.tab === tab);
   });

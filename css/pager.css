@@ -1,0 +1,68 @@
+/* 移动端分页样式（CHG-001 / ADR-004）
+ * 仅在 body.pager-mode（JS 判定 ≤900px）下生效，桌面零影响。
+ */
+
+body.pager-mode {
+  overflow: hidden;
+}
+
+body.pager-mode #appMainContainer {
+  /* 高度由 JS 精确测量（innerHeight - 顶栏 - 底栏），避免 dvh 兼容问题 */
+  padding: 6px 8px 0 8px;
+  overflow: hidden !important;
+  -webkit-overflow-scrolling: touch;
+}
+
+body.pager-mode .main-grid {
+  display: block !important;
+  height: 100%;
+  max-width: 100%;
+  margin: 0;
+  gap: 0;
+}
+
+body.pager-mode #leftPanel,
+body.pager-mode #rightPanel {
+  height: 100%;
+  overflow-y: auto;
+  overflow-x: hidden;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-y: contain;
+  padding-bottom: calc(12px + env(safe-area-inset-bottom, 0px));
+  scrollbar-width: thin;
+}
+
+/* 单页内卡片间距收紧，减少「一屏装不下」的观感 */
+body.pager-mode #leftPanel > .m3-card,
+body.pager-mode #rightPanel > .m3-card {
+  margin-bottom: 8px;
+}
+
+body.pager-mode #rightPanel > .m3-card:last-child,
+body.pager-mode #leftPanel > .m3-card:last-child {
+  margin-bottom: 0;
+}
+
+/* 切页入场动效：轻微上移 + 淡入，克制不喧哗 */
+@keyframes qimenPagerEnter {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+body.pager-mode .pager-enter {
+  animation: qimenPagerEnter 180ms cubic-bezier(0.2, 0, 0, 1);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  body.pager-mode .pager-enter { animation: none; }
+}
+
+/* 桌面端防御：万一内联样式残留，这里强制恢复双栏（≥901px 生效） */
+@media (min-width: 901px) {
+  body:not(.pager-mode) #appMainContainer,
+  body:not(.pager-mode) #leftPanel,
+  body:not(.pager-mode) #rightPanel {
+    height: auto;
+    overflow: visible;
+  }
+}

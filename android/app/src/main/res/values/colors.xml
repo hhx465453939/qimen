@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- 与 PWA manifest 的 theme_color / background_color 对齐 -->
+    <color name="colorPrimary">#2355C4</color>
+    <color name="colorPrimaryDark">#1E53B7</color>
+    <color name="colorAccent">#7C4DFF</color>
+    <color name="splashBackground">#F8F9FD</color>
+</resources>
