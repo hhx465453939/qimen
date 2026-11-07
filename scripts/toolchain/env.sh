@@ -90,22 +90,26 @@ qimen_apply_proxy() {
   echo "[env] 使用代理 $p" >&2
 }
 
-# 把代理写进 Gradle 本地配置（生成物，绝不提交）
+# 把代理与 JVM 参数写进 Gradle 本地配置（生成物，在项目内，绝不提交）
+# 关键：AGP 的 analytics.settings 硬编码读 JVM 的 user.home，不看 ANDROID_USER_HOME；
+# 而 org.gradle.jvmargs 存在时 Gradle 会 fork 独立构建 JVM，启动器 -D 传不进去。
+# 所以必须把 -Duser.home 写进 org.gradle.jvmargs，保证 ~/.android 不被写入（AC-3.2）。
 qimen_write_gradle_proxy() {
   local f="$GRADLE_USER_HOME/gradle.properties"
-  [ -z "${QIMEN_PROXY:-}" ] && return 0
-  local hp="${QIMEN_PROXY#*://}"
-  local host="${hp%%:*}"
-  local port="${hp##*:}"
   mkdir -p "$GRADLE_USER_HOME"
   {
-    echo "systemProp.http.proxyHost=$host"
-    echo "systemProp.http.proxyPort=$port"
-    echo "systemProp.https.proxyHost=$host"
-    echo "systemProp.https.proxyPort=$port"
-    echo "systemProp.http.nonProxyHosts=localhost|127.0.0.1"
-    echo "org.gradle.jvmargs=-Xmx3072m -XX:MaxMetaspaceSize=1024m"
+    if [ -n "${QIMEN_PROXY:-}" ]; then
+      local hp="${QIMEN_PROXY#*://}"
+      local host="${hp%%:*}"
+      local port="${hp##*:}"
+      echo "systemProp.http.proxyHost=$host"
+      echo "systemProp.http.proxyPort=$port"
+      echo "systemProp.https.proxyHost=$host"
+      echo "systemProp.https.proxyPort=$port"
+      echo "systemProp.http.nonProxyHosts=localhost|127.0.0.1"
+    fi
+    echo "org.gradle.jvmargs=-Xmx3072m -XX:MaxMetaspaceSize=1024m -Duser.home=${ANDROID_USER_HOME:-$QIMEN_TOOLCHAIN/android-user-home}"
     echo "org.gradle.daemon=false"
   } > "$f"
-  echo "[env] 已写入 Gradle 代理配置 $f" >&2
+  echo "[env] 已写入 Gradle 本地配置 $f" >&2
 }

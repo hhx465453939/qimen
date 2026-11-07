@@ -52,6 +52,8 @@
 | E-CMD-002 | 单元/结构测试 12/12 通过 | `npm test` 输出 | ✅ 已通过 |
 | E-CMD-003 | 浏览器冒烟 6/6 通过（移动 390×844 + 桌面 1280×900） | `npx playwright test` 输出 | ✅ 已通过 |
 | E-CMD-004 | 发布产物 22/22 项校验通过（从 Release 重新下载后复核） | `dist/apk-report.json` | ✅ 已通过 |
+| E-CMD-005 | 全局残留收容：造出残留 → guard 收容 → `~/.android` 清空；含 avd/adbkey/白名单外文件时只告警不动手 | `scripts/toolchain/global-leak-guard.sh` | ✅ 已通过 |
+| E-CI-003 | 收容修复后 main CI 全绿 | https://github.com/hhx465453939/qimen/actions/runs/42335598722 | ✅ success |
 | E-CI-001 | main 分支 CI 全绿（web + android） | https://github.com/hhx465453939/qimen/actions/runs/42331165527 | ✅ success |
 | E-CI-002 | v1.0.0 tag CI 全绿（含 release job） | https://github.com/hhx465453939/qimen/actions/runs/42331795798 | ✅ success |
 | E-REL-001 | GitHub Release v1.0.0 | https://github.com/hhx465453939/qimen/releases/tag/v1.0.0 | ✅ 已发布 |
