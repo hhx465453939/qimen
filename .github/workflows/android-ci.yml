@@ -1,0 +1,207 @@
+name: android-ci
+
+on:
+  push:
+    branches: [main]
+    tags: ['v*']
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  NODE_VERSION: '22'
+
+jobs:
+  # ---------- 1. Web 结构与行为测试 ----------
+  web:
+    name: web-tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+
+      - name: 安装依赖
+        run: npm ci
+
+      - name: 结构与分页行为测试
+        run: npm test
+
+      - name: 构建 web 资源
+        run: npm run build:web
+
+      - name: 上传 web 资源
+        uses: actions/upload-artifact@v4
+        with:
+          name: web-assets
+          path: www
+          retention-days: 3
+
+  # ---------- 2. Android 构建 + 产物校验 ----------
+  android:
+    name: android-release-apk
+    runs-on: ubuntu-latest
+    needs: web
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+
+      - name: 安装 JDK 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - name: 安装 Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: 配置 Gradle 缓存
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          cache-read-only: false
+
+      - name: 安装依赖
+        run: npm ci
+
+      - name: 取回 web 资源
+        uses: actions/download-artifact@v4
+        with:
+          name: web-assets
+          path: www
+
+      - name: 计算版本号
+        run: node scripts/version.mjs --shell >> "$GITHUB_ENV"
+
+      - name: 解码签名密钥（可选）
+        id: keystore
+        env:
+          KEYSTORE_B64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+        run: |
+          if [ -n "$KEYSTORE_B64" ]; then
+            echo "$KEYSTORE_B64" | base64 -d > "$RUNNER_TEMP/release.keystore"
+            echo "QIMEN_KEYSTORE_PATH=$RUNNER_TEMP/release.keystore" >> "$GITHUB_ENV"
+            echo "signed=true" >> "$GITHUB_OUTPUT"
+            echo "使用 release 签名"
+          else
+            echo "signed=false" >> "$GITHUB_OUTPUT"
+            echo "::warning::未配置签名 secrets，将产出 debug 签名包（不可平滑升级）"
+          fi
+
+      - name: 装上 SDK 平台与构建工具
+        run: |
+          sdkmanager --install "platform-tools" "platforms;android-36" "build-tools;36.0.0"
+
+      - name: 同步 Capacitor
+        run: npx cap sync android
+
+      - name: 生成启动图标
+        run: |
+          python3 -m pip install --quiet pillow
+          python3 scripts/make-icons.py
+
+      - name: Gradle assembleRelease
+        env:
+          QIMEN_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          QIMEN_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          QIMEN_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+          QIMEN_USE_ALIYUN_MIRRORS: 'false'
+        run: |
+          cd android
+          ./gradlew --no-daemon --stacktrace assembleRelease
+
+      - name: 收集并校验 APK
+        run: |
+          mkdir -p dist
+          APK=$(find android/app/build/outputs/apk/release -name '*.apk' | head -1)
+          cp "$APK" "dist/qimen-v${QIMEN_VERSION_NAME}.apk"
+          bash scripts/verify-apk.sh "dist/qimen-v${QIMEN_VERSION_NAME}.apk"
+
+      - name: 上传 APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: qimen-apk
+          path: dist/qimen-*.apk
+          retention-days: 14
+
+      - name: Job Summary
+        if: always()
+        run: |
+          {
+            echo "## Android 构建结果"
+            echo ""
+            echo "- 版本: \`${QIMEN_VERSION_NAME}\` (code ${QIMEN_VERSION_CODE})"
+            echo "- 签名: ${{ steps.keystore.outputs.signed == 'true' && 'release 密钥' || 'debug 密钥（未配置 secrets）' }}"
+            if [ -f dist/apk-report.json ]; then
+              echo ""
+              echo '```json'
+              cat dist/apk-report.json
+              echo '```'
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
+
+  # ---------- 3. 打 tag → GitHub Release ----------
+  release:
+    name: publish-release
+    runs-on: ubuntu-latest
+    needs: android
+    if: startsWith(github.ref, 'refs/tags/v')
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: 下载 APK
+        uses: actions/download-artifact@v4
+        with:
+          name: qimen-apk
+          path: dist
+
+      - name: 生成校验和
+        run: |
+          cd dist
+          sha256sum *.apk > SHA256SUMS.txt
+          cat SHA256SUMS.txt
+
+      - name: 创建 Release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          TAG="${GITHUB_REF#refs/tags/}"
+          cat > notes.md <<EOF
+          ## 奇门排盘 ${TAG}
+
+          离线可用的奇门遁甲排盘 Android 应用。
+
+          ### 安装
+          1. 下载 \`qimen-${TAG}.apk\`
+          2. 手机上允许「安装未知来源应用」
+          3. 安装后桌面出现「奇门排盘」
+
+          ### 校验
+          \`\`\`
+          $(cat dist/SHA256SUMS.txt)
+          \`\`\`
+
+          ### 系统要求
+          - Android 7.0 及以上（minSdk 24）
+          - 系统 WebView 建议 Chrome 108+
+
+          ### 已知限制
+          - 与网页版 PWA 的数据不互通（localStorage 按 origin 隔离）
+          - 未上架任何应用商店，仅侧载安装
+          EOF
+          gh release create "$TAG" dist/*.apk dist/SHA256SUMS.txt \
+            --title "奇门排盘 ${TAG}" \
+            --notes-file notes.md \
+            --verify-tag

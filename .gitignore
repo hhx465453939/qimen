@@ -22,3 +22,28 @@ server.crt
 __pycache__/
 .DS_Store
 Thumbs.db
+
+# ===== Android / 构建（CHG-001）=====
+# 项目内工具链与生成物：绝不提交
+.toolchain/
+.signing/
+node_modules/
+www/
+dist/
+android/.gradle/
+android/build/
+android/app/build/
+android/app/release.keystore
+android/local.properties
+
+# Capacitor 同步生成物（由 cap sync 重建，不提交）
+android/app/src/main/assets/public/
+android/app/src/main/assets/capacitor.config.json
+android/app/src/main/assets/capacitor.plugins.json
+
+# 上面的 *.png 会误伤安卓启动图标，必须在此放行（顺序敏感，勿上移）
+!android/app/src/main/res/**/*.png
+
+# Playwright 产物
+test-results/
+playwright-report/

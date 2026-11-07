@@ -1,0 +1,13 @@
+{
+  "appId": "io.github.hhx465453939.qimen",
+  "appName": "奇门排盘",
+  "webDir": "www",
+  "server": {
+    "androidScheme": "https"
+  },
+  "android": {
+    "allowMixedContent": false,
+    "webContentsDebuggingEnabled": false,
+    "backgroundColor": "#f8f9fd"
+  }
+}

@@ -1,0 +1,29 @@
+{
+  "name": "qimen-android",
+  "private": true,
+  "version": "1.0.0",
+  "description": "奇门遁甲专业排盘 — Android 封装、测试与发布流水线（工具链全部位于项目内）",
+  "scripts": {
+    "setup": "bash scripts/toolchain/bootstrap.sh",
+    "test": "node --test tests/*.test.mjs",
+    "test:e2e": "playwright test",
+    "build:web": "node scripts/build-web.mjs",
+    "icons": "python3 scripts/make-icons.py",
+    "sync:android": "npm run build:web && cap sync android",
+    "android:debug": "bash scripts/android-build.sh debug",
+    "android:release": "bash scripts/android-build.sh release",
+    "verify:apk": "bash scripts/verify-apk.sh",
+    "gen:keystore": "bash scripts/gen-keystore.sh",
+    "set:secrets": "bash scripts/set-gh-secrets.sh"
+  },
+  "dependencies": {
+    "@capacitor/android": "8.6.0",
+    "@capacitor/app": "8.1.2",
+    "@capacitor/core": "8.6.0"
+  },
+  "devDependencies": {
+    "@capacitor/cli": "8.6.0",
+    "@playwright/test": "1.65.0",
+    "jsdom": "31.0.0"
+  }
+}
