@@ -67,6 +67,10 @@ jobs:
 
       - name: 安装 Android SDK
         uses: android-actions/setup-android@v3
+        with:
+          # 默认会装 'tools' 包，但 Google 已下架该包（Failed to find package 'tools'）
+          # 只装 platform-tools，其余组件由下一步显式安装
+          packages: 'platform-tools'
 
       - name: 配置 Gradle 缓存
         uses: gradle/actions/setup-gradle@v4
