@@ -26,9 +26,16 @@ if [ -x "$QIMEN_TOOLCHAIN/android-sdk/cmdline-tools/latest/bin/sdkmanager" ] \
   || [ -d "$QIMEN_TOOLCHAIN/android-sdk/platforms" ]; then
   export ANDROID_HOME="$QIMEN_TOOLCHAIN/android-sdk"
   export ANDROID_SDK_ROOT="$ANDROID_HOME"
-  # 只设 ANDROID_USER_HOME：同时设 ANDROID_SDK_HOME 会被 AGP 8.13 判为冲突并报错
-  export ANDROID_USER_HOME="$QIMEN_TOOLCHAIN/android-user-home"
 fi
+
+# 无论用项目内 SDK 还是外部 SDK（如 CI 的 setup-android），
+# AGP / sdkmanager / adb 的用户级状态都必须留在项目内。
+# 只设 ANDROID_USER_HOME：同时设 ANDROID_SDK_HOME 会被 AGP 8.13 判为冲突并报错。
+# 注意：这一行必须无条件执行——曾经因为只在“有本地 SDK”时设置，
+# 导致外部 SDK 场景下 AGP 回落写入 ~/.android（debug.keystore 泄漏）。
+: "${ANDROID_USER_HOME:=$QIMEN_TOOLCHAIN/android-user-home}"
+export ANDROID_USER_HOME
+mkdir -p "$ANDROID_USER_HOME" 2>/dev/null
 
 # ---------- 其它缓存目录（不覆盖外部已有值） ----------
 : "${GRADLE_USER_HOME:=$QIMEN_TOOLCHAIN/gradle-home}"
@@ -39,6 +46,7 @@ export GRADLE_USER_HOME npm_config_cache TMPDIR PLAYWRIGHT_BROWSERS_PATH
 export TMP="$TMPDIR" TEMP="$TMPDIR"
 
 mkdir -p "$GRADLE_USER_HOME" "$npm_config_cache" "$TMPDIR" 2>/dev/null
+[ -n "${ANDROID_USER_HOME:-}" ] && mkdir -p "$ANDROID_USER_HOME" 2>/dev/null
 [ -n "${ANDROID_USER_HOME:-}" ] && mkdir -p "$ANDROID_USER_HOME" 2>/dev/null
 
 # ---------- PATH（只加真实存在的目录） ----------
