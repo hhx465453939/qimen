@@ -107,11 +107,21 @@
     if (!state.mobile) return;
     var nav = e.nav;
     var navH = nav ? nav.offsetHeight || 0 : 0;
+    var vh = global.innerHeight || 800;
     var top = e.main.getBoundingClientRect ? e.main.getBoundingClientRect().top : 0;
     var safePad = 8;
-    var h = (global.innerHeight || 800) - top - navH - safePad;
+    var h = vh - top - navH - safePad;
     if (h < 240) h = 240; // 极端情况兜底，避免负高度
-    e.main.style.height = h + 'px';
+    // 高度必须由 CSS 变量 + !important 锁死：
+    // 光设内联 height 会被 flex 子项的 min-height:auto 按内容高度顶掉
+    // （真机实测：设 749px → 实际 1448px → 面板无滚动余量 → 滑动无反应）
+    var root = document.documentElement;
+    if (root && root.style && root.style.setProperty) {
+      root.style.setProperty('--qimen-vh', Math.round(vh) + 'px');
+      root.style.setProperty('--qimen-pager-height', Math.round(h) + 'px');
+    }
+    // 内联值仅作 CSS 丢失时的兜底
+    e.main.style.height = Math.round(h) + 'px';
     e.main.style.overflow = 'hidden';
   }
 
@@ -157,6 +167,11 @@
   function cleanupDesktop() {
     var e = els();
     document.body.classList.remove('pager-mode');
+    var root = document.documentElement;
+    if (root && root.style && root.style.removeProperty) {
+      root.style.removeProperty('--qimen-vh');
+      root.style.removeProperty('--qimen-pager-height');
+    }
     [e.main, e.left, e.right].forEach(function (el) {
       if (!el) return;
       el.style.height = '';
@@ -226,15 +241,24 @@
     if (next) go(next);
   }
 
-  function isHorizontalScroller(node) {
+  function isHorizontalScroller(node, dir) {
     var el = node;
-    while (el && el !== document.body) {
-      if (el.scrollWidth > el.clientWidth + 4) {
+    var depth = 0;
+    while (el && el !== document.body && depth < 8) {
+      if (el.scrollWidth > el.clientWidth + 8) {
         var style = global.getComputedStyle ? global.getComputedStyle(el) : null;
         var ox = style && style.overflowX;
-        if (ox === 'auto' || ox === 'scroll') return true;
+        if (ox === 'auto' || ox === 'scroll') {
+          var max = el.scrollWidth - el.clientWidth;
+          var atStart = el.scrollLeft <= 1;
+          var atEnd = el.scrollLeft >= max - 1;
+          // 只有「这个方向真的还能继续滚」才把手指让给容器；
+          // 已经到边界就交回分页，否则表格会永久吞掉横向滑动
+          if ((dir < 0 && !atEnd) || (dir > 0 && !atStart)) return true;
+        }
       }
       el = el.parentElement;
+      depth++;
     }
     return false;
   }
@@ -242,7 +266,7 @@
   function bindSwipe() {
     var e = els();
     if (!e.main) return;
-    var startX = 0, startY = 0, tracking = false;
+    var startX = 0, startY = 0, lastX = 0, lastY = 0, tracking = false;
 
     function onStart(ev) {
       if (!state.mobile || anyModalOpen()) { tracking = false; return; }
@@ -252,26 +276,41 @@
           ev.target.closest('input, select, textarea, .m3-slider, [data-no-swipe]')) {
         tracking = false; return;
       }
-      startX = t.clientX; startY = t.clientY; tracking = true;
+      startX = lastX = t.clientX;
+      startY = lastY = t.clientY;
+      tracking = true;
     }
 
-    function onEnd(ev) {
+    // 记录最新位置：Android 被原生滚动接管时可能不发 touchend，只能靠它兜底
+    function onMove(ev) {
+      if (!tracking) return;
+      var t = ev.touches && ev.touches[0];
+      if (!t) return;
+      lastX = t.clientX;
+      lastY = t.clientY;
+    }
+
+    function finish(ev) {
       if (!tracking) return;
       tracking = false;
-      var t = ev.changedTouches && ev.changedTouches[0];
-      if (!t) return;
-      var dx = t.clientX - startX;
-      var dy = t.clientY - startY;
-      if (Math.abs(dx) < SWIPE_MIN) return;
-      if (Math.abs(dx) < Math.abs(dy) * SWIPE_RATIO) return;
-      if (ev.target && isHorizontalScroller(ev.target)) return;
+      var t = (ev && ev.changedTouches && ev.changedTouches[0]) || null;
+      var endX = t ? t.clientX : lastX;
+      var endY = t ? t.clientY : lastY;
+      var dx = endX - startX;
+      var dy = endY - startY;
+      if (Math.abs(dx) < SWIPE_MIN) return;              // 位移不足：当点击/滚动
+      if (Math.abs(dx) < Math.abs(dy) * SWIPE_RATIO) return; // 纵向为主：不切页
+      if (ev && ev.target && isHorizontalScroller(ev.target, dx < 0 ? -1 : 1)) return;
       step(dx < 0 ? 1 : -1);
     }
 
     e.main.addEventListener('touchstart', onStart, { passive: true });
-    e.main.addEventListener('touchend', onEnd, { passive: true });
+    e.main.addEventListener('touchmove', onMove, { passive: true });
+    e.main.addEventListener('touchend', finish, { passive: true });
+    e.main.addEventListener('touchcancel', finish, { passive: true });
     state.bound.swipeStart = onStart;
-    state.bound.swipeEnd = onEnd;
+    state.bound.swipeMove = onMove;
+    state.bound.swipeEnd = finish;
   }
 
   function bindNav() {
@@ -298,7 +337,11 @@
         apply();
         return;
       }
-      if (nowMobile) { layout(); }
+      if (nowMobile) {
+        layout();
+        // 旋转后 innerHeight 可能延迟更新，补一次重算
+        setTimeout(layout, 260);
+      }
     };
     global.addEventListener('resize', handler);
     global.addEventListener('orientationchange', handler);
@@ -345,7 +388,11 @@
     var b = state.bound;
     if (e.nav && b.nav) e.nav.removeEventListener('click', b.nav);
     if (e.main && b.swipeStart) e.main.removeEventListener('touchstart', b.swipeStart);
-    if (e.main && b.swipeEnd) e.main.removeEventListener('touchend', b.swipeEnd);
+    if (e.main && b.swipeMove) e.main.removeEventListener('touchmove', b.swipeMove);
+    if (e.main && b.swipeEnd) {
+      e.main.removeEventListener('touchend', b.swipeEnd);
+      e.main.removeEventListener('touchcancel', b.swipeEnd);
+    }
     if (b.resize) {
       global.removeEventListener('resize', b.resize);
       global.removeEventListener('orientationchange', b.resize);

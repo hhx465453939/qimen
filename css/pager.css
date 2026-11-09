@@ -1,35 +1,75 @@
 /* 移动端分页样式（CHG-001 / ADR-004）
  * 仅在 body.pager-mode（JS 判定 ≤900px）下生效，桌面零影响。
+ *
+ * ⚠️ 2026-11 真机回归修复（Redmi Note 12 反馈「滑动无反应、点击正常」）：
+ *   #appMainContainer 是 flex 子项，浏览器默认 min-height:auto
+ *   → 会被内容高度（实测 1448px）撑开，把 JS 设的 749px 顶掉
+ *   → 面板高度 = 内容高度，clientHeight == scrollHeight
+ *   → 没有滚动余量，body 又 overflow:hidden，屏幕外内容永远够不到。
+ *   修复：min-height:0 + 显式高度（CSS 变量）+ !important 锁死视口高度。
  */
 
 body.pager-mode {
-  overflow: hidden;
+  overflow: hidden !important;
+  overscroll-behavior: none;
 }
 
 body.pager-mode #appMainContainer {
-  /* 高度由 JS 精确测量（innerHeight - 顶栏 - 底栏），避免 dvh 兼容问题 */
-  padding: 6px 8px 0 8px;
+  /* 关键三行：flex 子项必须能收缩，且高度锁死 */
+  flex: 0 0 auto !important;
+  height: var(--qimen-pager-height, calc(100vh - 120px)) !important;
+  min-height: 0 !important;
+  max-height: var(--qimen-pager-height, calc(100vh - 120px)) !important;
+  padding: 6px 8px 0 8px !important;
   overflow: hidden !important;
   -webkit-overflow-scrolling: touch;
 }
 
 body.pager-mode .main-grid {
   display: block !important;
-  height: 100%;
+  height: 100% !important;
+  min-height: 0 !important;
+  max-height: 100% !important;
   max-width: 100%;
-  margin: 0;
+  margin: 0 !important;
   gap: 0;
 }
 
 body.pager-mode #leftPanel,
 body.pager-mode #rightPanel {
-  height: 100%;
-  overflow-y: auto;
-  overflow-x: hidden;
+  height: 100% !important;
+  min-height: 0 !important;
+  max-height: 100% !important;
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
   -webkit-overflow-scrolling: touch;
   overscroll-behavior-y: contain;
+  /* 必须是 pan-y：
+   * - 纵向滑动交给浏览器原生滚动（最跟手）
+   * - 同时阻止浏览器把横向滑动识别为「后退/前进」手势
+   *   （去掉后右滑会触发历史导航，页面被导航到 about:blank，分页引擎消失）
+   * 代价：面板内元素不能做原生横向滚动，因此宽表格改为自适应换行（见下方）。 */
+  touch-action: pan-y;
   padding-bottom: calc(12px + env(safe-area-inset-bottom, 0px));
   scrollbar-width: thin;
+}
+
+/* 宽表格自适应：分页模式下不允许横向滚动（否则与 pan-y 冲突形成死区），
+ * 改为固定布局 + 强制换行，保证列内容不被裁切。 */
+body.pager-mode .merged-table-responsive {
+  overflow-x: hidden !important;
+}
+
+body.pager-mode .merged-table-responsive > table {
+  width: 100% !important;
+  min-width: 0 !important;
+  table-layout: fixed !important;
+}
+
+body.pager-mode .merged-table-responsive th,
+body.pager-mode .merged-table-responsive td {
+  word-break: break-word;
+  overflow-wrap: anywhere;
 }
 
 /* 单页内卡片间距收紧，减少「一屏装不下」的观感 */
@@ -57,12 +97,14 @@ body.pager-mode .pager-enter {
   body.pager-mode .pager-enter { animation: none; }
 }
 
-/* 桌面端防御：万一内联样式残留，这里强制恢复双栏（≥901px 生效） */
+/* 桌面端防御：万一内联样式/CSS 变量残留，这里强制恢复双栏（≥901px 生效） */
 @media (min-width: 901px) {
   body:not(.pager-mode) #appMainContainer,
   body:not(.pager-mode) #leftPanel,
   body:not(.pager-mode) #rightPanel {
-    height: auto;
-    overflow: visible;
+    height: auto !important;
+    max-height: none !important;
+    min-height: 0;
+    overflow: visible !important;
   }
 }

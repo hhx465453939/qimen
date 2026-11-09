@@ -43,28 +43,20 @@ test.describe('移动端 390x844', () => {
     expect(errors, '页面不应有未捕获 JS 异常: ' + errors.join(' | ')).toEqual([]);
   });
 
-  test('滑动切页与返回键语义', async ({ page }) => {
+  test('返回键语义（滑动已由 touch.spec.mjs 用真实触摸覆盖）', async ({ page }) => {
     await page.goto('/index.html');
     await expect(page.locator('body')).toHaveClass(/pager-mode/);
 
-    // 左滑 → 万年历
-    await page.evaluate(() => {
-      const main = document.getElementById('appMainContainer');
-      const mk = (type, x, y) => {
-        const ev = new Event(type, { bubbles: true, cancelable: true });
-        const t = { clientX: x, clientY: y };
-        ev.touches = type === 'touchstart' ? [t] : [];
-        ev.changedTouches = type === 'touchend' ? [t] : [];
-        return ev;
-      };
-      main.dispatchEvent(mk('touchstart', 320, 420));
-      main.dispatchEvent(mk('touchend', 120, 420));
-    });
-    await expect(page.locator('.calendar-card')).toBeVisible();
+    await page.evaluate(() => window.QimenPager.go('cases'));
+    expect(await page.evaluate(() => window.QimenPager.current())).toBe('cases');
 
     const handled = await page.evaluate(() => window.QimenPager.handleBack());
     expect(handled).toBe('handled');
     await expect(page.locator('#leftPanel')).toBeVisible();
+
+    // 已在首页：应交回系统退出
+    const exit = await page.evaluate(() => window.QimenPager.handleBack());
+    expect(exit).toBe('exit');
   });
 });
 

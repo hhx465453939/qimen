@@ -1,20 +1,20 @@
 // Service Worker for 奇门遁甲专业排盘 PWA (Material Design 3)
 // 策略: Cache-First，离线秒开，支持离线 100% 独立脱机运行
 
-const CACHE_NAME = 'qimen-m3-v97';
+const CACHE_NAME = 'qimen-m3-v98';
 const ASSETS_TO_CACHE = [
   './',
   './index.html',
   './css/style.css',
   './css/style.css?v=96',
   './css/pager.css',
-  './css/pager.css?v=1',
+  './css/pager.css?v=2',
   './js/database.js',
   './js/calendar.js',
   './js/qimen.js',
   './js/app.js',
   './js/mobile-pager.js',
-  './js/mobile-pager.js?v=1',
+  './js/mobile-pager.js?v=2',
   './manifest.json',
   './icons/icon-192.png',
   './icons/icon-512.png',
