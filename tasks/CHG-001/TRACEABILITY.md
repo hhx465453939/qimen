@@ -19,6 +19,7 @@
 | | AC-2.5 返回键优先级 | ADR-004 | M4 | pager 单测 `handleBack()` 三态 | E-CMD |
 | | AC-2.6 冷启动恢复 + hash | ADR-004 | M4 | pager 单测（localStorage + `#/page`） | E-CMD |
 | | AC-2.7 桌面不回归 | ADR-004 | M4 | Playwright 1280×900：双栏可见、无隐藏、无横向位移 | E-CMD |
+| | **AC-2.8 真机触摸回归**（v1.0.1 新增） | ADR-004 / D-12~D-15 | M4 | `tests/e2e/touch.spec.mjs`（CDP 真实触摸）：容器高度锁死、纵向可滚、横向可翻页、表格区无死区、手势不影响点击；并断言右滑不触发历史导航 | E-CMD-006 |
 | US-3 环境自包含 | AC-3.1 工具链就位 | ADR-002 | M1 | `bootstrap.sh` + `sdkmanager --list_installed` | E-CMD(`dist/toolchain-report.txt`) |
 | | AC-3.2 零全局写入 | ADR-002 | M1, M3 | `verify-isolation.sh` 构建前后各一次 | E-CMD |
 | | AC-3.3 删除工具链后可恢复 | ADR-002 | M1 | `rm -rf .toolchain` 后 `git status --porcelain` 为空 | E-CMD |
@@ -54,6 +55,8 @@
 | E-CMD-004 | 发布产物 22/22 项校验通过（从 Release 重新下载后复核） | `dist/apk-report.json` | ✅ 已通过 |
 | E-CMD-005 | 全局残留收容：造出残留 → guard 收容 → `~/.android` 清空；含 avd/adbkey/白名单外文件时只告警不动手 | `scripts/toolchain/global-leak-guard.sh` | ✅ 已通过 |
 | E-CI-003 | 收容修复后 main CI 全绿 | https://github.com/hhx465453939/qimen/actions/runs/42335598722 | ✅ success |
+| E-CMD-006 | 真实触摸回归 5 条全过；总 e2e 17/17；单元 12/12 | `npx playwright test` / `npm test` 输出 | ✅ 已通过 |
+| E-CMD-007 | 修复前后对比：主容器 1448px→745px；滚动余量 0→703px；纵向 `scrollTop` 0→620；横向 `pan→cal→pan`；表格 `scrollWidth==clientWidth` | `tests/diag/touch-diag.mjs` 输出 | ✅ 已实测 |
 | E-CI-001 | main 分支 CI 全绿（web + android） | https://github.com/hhx465453939/qimen/actions/runs/42331165527 | ✅ success |
 | E-CI-002 | v1.0.0 tag CI 全绿（含 release job） | https://github.com/hhx465453939/qimen/actions/runs/42331795798 | ✅ success |
 | E-REL-001 | GitHub Release v1.0.0 | https://github.com/hhx465453939/qimen/releases/tag/v1.0.0 | ✅ 已发布 |

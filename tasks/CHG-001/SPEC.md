@@ -409,6 +409,10 @@ qimen/
 | D-9 | 启动图标与状态栏需与 M3 主色一致 | 模板默认 `ic_launcher_background=#FFFFFF`，状态栏未配置 | 背景改 `#2355C4`；`styles.xml` 设 statusBar/navigationBar 颜色与 splash 主题 |
 | D-10 | `~/.android` 残留 1 个 127 字节 `analytics.settings` | 二分定位：`gradlew help`（仅配置阶段）即产生；`ANDROID_USER_HOME` 能把 `debug.keystore`/`cache`/`android-cli` 全部导向项目内，但该写入者不认 `user.home`、不认 `HOME`、也不认 `ANDROID_USER_HOME`。已排除：启动器 `-Duser.home`、`JAVA_OPTS`、`org.gradle.jvmargs`（含写进 `GRADLE_USER_HOME/gradle.properties`）、`HOME` 覆盖、`ANDROID_PREFS_ROOT`（与 `ANDROID_USER_HOME` 冲突导致构建失败）。本机无 `strace` 且无 root，安装追踪工具本身会违反「不外溢」，无法再定位具体进程 | 新增 `scripts/toolchain/global-leak-guard.sh`：构建结束时把「纯副产物」的 `~/.android` 收容进 `.toolchain/quarantine/`。安全边界：发现 `avd/`、`adbkey`、`adbkey.pub`、`breakpad/` 或白名单外文件、或体积 > 4MB → **只告警不动手**。已接入 `android-build.sh`（成功/失败都收容）与 CI |
 | D-11 | CI 的 `setup-android` 默认装已下架的 `tools` 包 | Google 已从仓库移除 `tools`，导致 `Failed to find package 'tools'` | 改为 `packages: 'platform-tools'`，其余组件由下一步显式 `sdkmanager --install` |
+| D-12 | **真机 v1.0.0 事故**：手机上「滑动无反应、点击正常」 | 主容器是 flex 子项，`min-height:auto` 按内容高度撑开，把 JS 设的视口高度顶掉。实测：视口 873px，JS 设 749px，实际 1448px；面板 `clientH == scrollH` → 滚动余量 0；body/容器又 `overflow:hidden`，屏幕外内容永远够不到 | `#appMainContainer` 加 `flex:0 0 auto` + `min-height:0` + `height/max-height` 用 CSS 变量 `!important` 锁死；`layout()` 改写 CSS 变量而非仅内联高度 |
+| D-13 | 横向手势在宽表格区域被永久吞掉 | 手势守卫只看「祖先能不能横滚」，不看「是否已到边界」。页面存在 `.merged-table-responsive`（内容 460 / 可视 335 / `overflow-x:auto`），手指落在表格上时每次都让路 | 守卫改为**方向 + 边界感知**（`atStart`/`atEnd`），到边界就交回分页 |
+| D-14 | 为修 D-13 去掉 `touch-action: pan-y`，反而放出浏览器历史手势 | 右滑被 Chrome 识别为「后退」，页面被导航走，新页面 `window.QimenPager` 为 `undefined` | 恢复 `touch-action: pan-y`（纵向跟手 + 阻断历史手势）；代价是面板内不能原生横滚，故把宽表格改为**固定布局 + 强制换行**，从根上消除「表格要横滚」这个死区来源 |
+| D-15 | 旧滑动测试**假绿** | 用 `page.evaluate` 手工 `dispatchEvent` 造 touch 事件，绕过了浏览器真实触摸链路（原生滚动接管 / `touch-action` / `touchcancel`），所以「没有滚动余量」「守卫吞手势」都测不出来 | 新增 `tests/e2e/touch.spec.mjs`，改用 CDP `Input.dispatchTouchEvent` 真实输入；并加高度锁死、纵向滚动、表格死区、手势不影响点击 5 条回归 |
 
 ### 9.1 实测结论（本轮证据）
 
